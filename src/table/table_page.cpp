@@ -30,8 +30,6 @@ namespace huadb {
     slotid_t TablePage::InsertRecord(std::shared_ptr<Record> record, xid_t xid, cid_t cid) {
         // 在记录头添加事务信息（xid 和 cid）
         // LAB 3 BEGIN
-
-        // 维护 lower 和 upper 指针
         // 设置 slots 数组
         // 将 record 写入 page data
         // 将 page 标记为 dirty
