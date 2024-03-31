@@ -31,6 +31,21 @@ namespace huadb {
         }
     }
 
+//    // 获取PageManager
+//    std::shared_ptr<PageManager> BufferPool::GetPageManager(oid_t db_oid, oid_t table_oid) {
+//        auto page_manager = std::make_shared<PageManager>();
+//        disk_.ReadPage(Disk::GetFilePath(db_oid, table_oid), 500, page_manager->GetData());
+//        AddToBuffer(db_oid, table_oid, 500, page_manager);
+//        return page_manager;
+//    }
+//
+//    // 新建PageManager
+//    std::shared_ptr<PageManager> BufferPool::NewPageManager(oid_t db_oid, oid_t table_oid) {
+//        auto page_manager = std::make_shared<PageManager>();
+//        AddToBuffer(db_oid, table_oid, 500, page_manager);
+//        return page_manager;
+//    }
+
     std::shared_ptr<Page> BufferPool::NewPage(oid_t db_oid, oid_t table_oid, pageid_t page_id) {
         auto page = std::make_shared<Page>();
         AddToBuffer(db_oid, table_oid, page_id, page);
@@ -97,5 +112,4 @@ namespace huadb {
         }
         systable_hashmap_.erase({buffer_entry.table_oid_, buffer_entry.page_id_});
     }
-
 }  // namespace huadb

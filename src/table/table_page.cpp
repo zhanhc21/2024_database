@@ -28,7 +28,7 @@ namespace huadb {
         page_->SetDirty();
     }
 
-    slotid_t TablePage::InsertRecord(std::shared_ptr<Record> record, xid_t xid, cid_t cid) {
+    slotid_t  TablePage::InsertRecord(std::shared_ptr<Record> record, xid_t xid, cid_t cid) {
         // 在记录头添加事务信息（xid 和 cid）
         // LAB 3 BEGIN
         // 设置 slots 数组

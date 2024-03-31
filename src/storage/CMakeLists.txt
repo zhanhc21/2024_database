@@ -5,7 +5,7 @@ add_library(
   disk.cpp
   lru_buffer_strategy.cpp
   page.cpp
-)
+        page_manager.cpp page_manager.h)
 
 set(ALL_OBJECT_FILES
   ${ALL_OBJECT_FILES} $<TARGET_OBJECTS:storage>

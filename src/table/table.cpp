@@ -2,6 +2,8 @@
 #include "table/table.h"
 
 #include "table/table_page.h"
+#include "storage/page_manager.h"
+
 namespace huadb {
 
     Table::Table(BufferPool &buffer_pool, LogManager &log_manager, oid_t oid, oid_t db_oid, ColumnList column_list,
@@ -11,6 +13,11 @@ namespace huadb {
               oid_(oid),
               db_oid_(db_oid),
               column_list_(std::move(column_list)) {
+
+        auto page_manager = buffer_pool_.NewPage(db_oid_, oid_, 1000);
+        PageManager Page(page_manager);
+        Page.Init();
+
         if (new_table || is_empty) {
             first_page_id_ = NULL_PAGE_ID;
         } else {
@@ -40,32 +47,66 @@ namespace huadb {
         pageid_t current_page_id = 0;
         slotid_t slot_id = 0;
 
+        auto page_manager = buffer_pool_.GetPage(db_oid_, oid_, 1000);
+        PageManager PageManager(page_manager);
+
         if (first_page_id_ == NULL_PAGE_ID) {
             first_page_id_ = 0;
+            PageManager.NewPage();
+            PageManager.InsertRecord(record->GetSize());
+
             auto first_page = buffer_pool_.NewPage(db_oid_, oid_, first_page_id_);
             TablePage FirstPage(first_page);
             FirstPage.Init();
             slot_id = FirstPage.InsertRecord(record, xid, cid);
-        } else {
-            while (current_page_id != NULL_PAGE_ID) {
-                auto current_page = buffer_pool_.GetPage(db_oid_, oid_, current_page_id);
-                TablePage Page(current_page);
+        }
+        else {
+            // 若满足条件
+            auto page_id = PageManager.InsertRecord(record->GetSize());
+            if (page_id != -1) {
+                auto page = buffer_pool_.GetPage(db_oid_, oid_, page_id);
+                TablePage Page(page);
+                slot_id = Page.InsertRecord(record, xid, cid);
 
-                if (Page.GetFreeSpaceSize() >= record->GetSize()) {
-                    slot_id = Page.InsertRecord(record, xid, cid);
-                    break;
-                }
-                // 无可用表
-                if (Page.GetNextPageId() == NULL_PAGE_ID) {
-                    auto new_page = buffer_pool_.NewPage(db_oid_, oid_, current_page_id + 1);
-                    TablePage NewPage(new_page);
-                    NewPage.Init();
-                    Page.SetNextPageId(current_page_id + 1);
-                    slot_id = NewPage.InsertRecord(record, xid, cid);
-                    break;
-                }
-                current_page_id = Page.GetNextPageId();
+                current_page_id = page_id;
             }
+            // 无可用页
+            else {
+                PageManager.NewPage();
+                page_id = PageManager.InsertRecord(record->GetSize());
+
+                auto page = buffer_pool_.GetPage(db_oid_, oid_, page_id - 1);
+                TablePage Page(page);
+                Page.SetNextPageId(page_id);
+
+                auto new_page = buffer_pool_.NewPage(db_oid_, oid_, page_id);
+                TablePage NewPage(new_page);
+                NewPage.Init();
+
+                slot_id = NewPage.InsertRecord(record, xid, cid);
+
+                current_page_id = page_id;
+            }
+
+//            while (current_page_id != NULL_PAGE_ID) {
+//                auto current_page = buffer_pool_.GetPage(db_oid_, oid_, current_page_id);
+//                TablePage Page(current_page);
+//
+//                if (Page.GetFreeSpaceSize() >= record->GetSize()) {
+//                    slot_id = Page.InsertRecord(record, xid, cid);
+//                    break;
+//                }
+//                // 无可用页
+//                if (Page.GetNextPageId() == NULL_PAGE_ID) {
+//                    auto new_page = buffer_pool_.NewPage(db_oid_, oid_, current_page_id + 1);
+//                    TablePage NewPage(new_page);
+//                    NewPage.Init();
+//                    Page.SetNextPageId(current_page_id + 1);
+//                    slot_id = NewPage.InsertRecord(record, xid, cid);
+//                    break;
+//                }
+//                current_page_id = Page.GetNextPageId();
+//            }
         }
         return {current_page_id, slot_id};
     }

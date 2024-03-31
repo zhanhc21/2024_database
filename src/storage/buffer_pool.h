@@ -8,6 +8,7 @@
 #include "storage/disk.h"
 #include "storage/lru_buffer_strategy.h"
 #include "storage/page.h"
+#include "page_manager.h"
 
 namespace huadb {
 
@@ -27,8 +28,14 @@ namespace huadb {
         // 获取一个已经存在的页面
         std::shared_ptr<Page> GetPage(oid_t db_oid, oid_t table_oid, pageid_t page_id);
 
+        // 获取PageManager
+        std::shared_ptr<PageManager> GetPageManager(oid_t db_oid, oid_t table_oid);
+
         // 新建一个页面
         std::shared_ptr<Page> NewPage(oid_t db_oid, oid_t table_oid, pageid_t page_id);
+
+        // 新建一个PageManager
+        std::shared_ptr<PageManager> NewPageManager(oid_t db_oid, oid_t table_oid);
 
         // 将所有页面刷到磁盘，regular_only 为 true 时只刷普通表页面
         void Flush(bool regular_only = false);
