@@ -1,6 +1,7 @@
 #include "table/table_page.h"
 #include <string>
 #include <sstream>
+#include <iostream>
 
 namespace huadb {
 
@@ -36,27 +37,19 @@ namespace huadb {
         // 返回插入的 slot id
         // LAB 1 BEGIN
 
-        auto size = record->GetSize();
-        *upper_ -= size;
+        auto slots_id = (*lower_ - PAGE_HEADER_SIZE) / sizeof(Slot);
+        *upper_ -= record->GetSize();
         *lower_ += sizeof(Slot);
 
         Slot new_slot {
-            sizeof(*page_data_),
-            size
+            static_cast<db_size_t>(DB_PAGE_SIZE - *upper_),
+            record->GetSize()
         };
-        int new_slots_size = sizeof(*slots_)/sizeof(Slot) + 1;
-        Slot* new_slots = new Slot[new_slots_size];
-        std::memcpy(new_slots, slots_, sizeof(Slot) * new_slots_size);
-        new_slots[new_slots_size - 1] = new_slot;
-        delete[] slots_;
-        slots_ = new_slots;
-        delete[] new_slots;
-
-        std::string NewData = std::string(page_data_) + record->ToString();
-        page_data_ = const_cast<char*>(NewData.data());
+        slots_[slots_id] = new_slot;
+        record -> SerializeTo(page_data_ + *upper_);
 
         page_->SetDirty();
-        return new_slots_size - 1;
+        return slots_id;
     }
 
     void TablePage::DeleteRecord(slotid_t slot_id, xid_t xid) {
@@ -67,16 +60,26 @@ namespace huadb {
         // 可使用 Record::DeserializeHeaderFrom 函数读取记录头
         // 将 page 标记为 dirty
         // LAB 1 BEGIN
+        auto offset = slots_[slot_id].offset_;
+        auto *record = page_data_ + DB_PAGE_SIZE - offset;
+        record[0] = 1;
+        page_->SetDirty();
     }
 
     std::shared_ptr<Record> TablePage::GetRecord(Rid rid, const ColumnList &column_list) {
         // 根据 slot_id 获取 record
         // 新建 record 并设置 rid
         // LAB 1 BEGIN
-        return nullptr;
+        auto slot_id = rid.slot_id_;
+        auto offset = slots_[slot_id].offset_;
+
+        auto record = std::make_shared<Record>();
+        record->SetRid(rid);
+        record->DeserializeFrom(page_data_ + DB_PAGE_SIZE - offset, column_list);
+        return record;
     }
 
-    void TablePage::UndoDeleteRecord(slotid_t slot_id) {
+    void TablePage::UndoDeleteRecord(slotid_t slot_d) {
         // 修改 undo delete 的逻辑
         // LAB 3 BEGIN
 

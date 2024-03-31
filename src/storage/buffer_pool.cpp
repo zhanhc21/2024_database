@@ -22,7 +22,8 @@ namespace huadb {
             disk_.ReadPage(Disk::GetFilePath(db_oid, table_oid), page_id, page->GetData());
             AddToBuffer(db_oid, table_oid, page_id, page);
             return page;
-        } else {
+        }
+        else {
             if (db_oid != SYSTEM_DATABASE_OID) {
                 buffer_strategy_->Access(entry->second);
             }
