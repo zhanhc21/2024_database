@@ -12,9 +12,9 @@ namespace huadb {
     pageid_t PageManager::InsertRecord(db_size_t record_size) {
         pageid_t page_id = NULL_PAGE_ID;
         for (int i=0; i < page_num_; ++i) {
-             if (page_manager_[i * 4] >= record_size) {
+             if (page_manager_[i] >= record_size) {
                  page_id = i;
-                 page_manager_[i * 4] -= record_size;
+                 page_manager_[i] -= record_size;
                  break;
              }
         }
