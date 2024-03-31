@@ -63,7 +63,7 @@ namespace huadb {
         else {
             // 若满足条件
             auto page_id = PageManager.InsertRecord(record->GetSize());
-            if (page_id != -1) {
+            if (page_id != NULL_PAGE_ID) {
                 auto page = buffer_pool_.GetPage(db_oid_, oid_, page_id);
                 TablePage Page(page);
                 slot_id = Page.InsertRecord(record, xid, cid);
@@ -87,26 +87,6 @@ namespace huadb {
 
                 current_page_id = page_id;
             }
-
-//            while (current_page_id != NULL_PAGE_ID) {
-//                auto current_page = buffer_pool_.GetPage(db_oid_, oid_, current_page_id);
-//                TablePage Page(current_page);
-//
-//                if (Page.GetFreeSpaceSize() >= record->GetSize()) {
-//                    slot_id = Page.InsertRecord(record, xid, cid);
-//                    break;
-//                }
-//                // 无可用页
-//                if (Page.GetNextPageId() == NULL_PAGE_ID) {
-//                    auto new_page = buffer_pool_.NewPage(db_oid_, oid_, current_page_id + 1);
-//                    TablePage NewPage(new_page);
-//                    NewPage.Init();
-//                    Page.SetNextPageId(current_page_id + 1);
-//                    slot_id = NewPage.InsertRecord(record, xid, cid);
-//                    break;
-//                }
-//                current_page_id = Page.GetNextPageId();
-//            }
         }
         return {current_page_id, slot_id};
     }
