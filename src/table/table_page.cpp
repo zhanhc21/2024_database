@@ -105,6 +105,8 @@ namespace huadb {
 
     db_size_t TablePage::GetUpper() const { return *upper_; }
 
+    char* TablePage::GetPageData() const { return page_data_; }
+
     db_size_t TablePage::GetFreeSpaceSize() const {
         if (*upper_ < *lower_ + sizeof(Slot)) {
             return 0;
