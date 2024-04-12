@@ -174,15 +174,15 @@ namespace huadb {
         // 依次获取 lsn 的 prev_lsn_，直到 NULL_LSN
         // 根据 lsn 和 flushed_lsn_ 的大小关系，判断日志在 buffer 中还是在磁盘中
         // 若日志在 buffer 中，通过 log_buffer_ 获取日志
-        // 若日志在磁盘中，通过 disk_ 读取日志
+        // 若日志在磁盘中，通过 disk_ 读取日志，count 参数可设置为 MAX_LOG_SIZE
+        // 通过 LogRecord::DeserializeFrom 函数解析日志
         // 调用日志的 Undo 函数
         // LAB 2 BEGIN
-        // TODO
         lsn_t lsn = att_.find(xid)->second;
         while (lsn != NULL_LSN) {
             // log buffer
             if (lsn > flushed_lsn_) {
-                for (const auto& record : log_buffer_) {
+                for (const auto &record: log_buffer_) {
                     if (record->GetLSN() == lsn) {
                         lsn = record->GetPrevLSN();
                         record->Undo(*buffer_pool_, *catalog_, *this, lsn);
@@ -190,7 +190,13 @@ namespace huadb {
                 }
             }
             // disk
-
+            else {
+                char *record_data = nullptr;
+                disk_.ReadLog(lsn, MAX_LOG_SIZE, record_data);
+                auto record = LogRecord::DeserializeFrom(lsn, record_data);
+                lsn = record->GetPrevLSN();
+                record->Undo(*buffer_pool_, *catalog_, *this, lsn);
+            }
         }
     }
 

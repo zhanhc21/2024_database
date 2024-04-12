@@ -79,13 +79,17 @@ namespace huadb {
         return record;
     }
 
-    void TablePage::UndoDeleteRecord(slotid_t slot_d) {
+    void TablePage::UndoDeleteRecord(slotid_t slot_id) {
         // 修改 undo delete 的逻辑
         // LAB 3 BEGIN
 
         // 清除记录的删除标记
         // 将页面设为 dirty
         // LAB 2 BEGIN
+        auto offset = slots_[slot_id].offset_;
+        auto *record = page_data_ + DB_PAGE_SIZE - offset;
+        record[0] = 0;
+        page_->SetDirty();
     }
 
     void TablePage::RedoInsertRecord(slotid_t slot_id, char *raw_record, db_size_t page_offset, db_size_t record_size) {
