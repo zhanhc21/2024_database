@@ -28,15 +28,6 @@ namespace huadb {
         // 设置页面的 page lsn
         // LAB 2 BEGIN
 
-        // 使用 buffer_pool_ 获取页面
-        // 使用 TablePage 类操作记录页面
-        // 遍历表的页面，判断页面是否有足够的空间插入记录，如果没有则通过 buffer_pool_ 创建新页面
-        // 如果 first_page_id_ 为 NULL_PAGE_ID，说明表还没有页面，需要创建新页面
-        // 创建新页面时需设置前一个页面的 next_page_id，并将新页面初始化
-        // 找到空间足够的页面后，通过 TablePage 插入记录
-        // 返回插入记录的 rid
-        // LAB 1 BEGIN
-
         pageid_t current_page_id = 0;
         slotid_t slot_id = 0;
 
@@ -46,6 +37,18 @@ namespace huadb {
             TablePage FirstPage(first_page);
             FirstPage.Init();
             slot_id = FirstPage.InsertRecord(record, xid, cid);
+
+            if (write_log) {
+                // 这里offset为插入record后的upper指针， 即指向当前记录的头部
+                db_size_t offset = FirstPage.GetUpper();
+                char *new_record = FirstPage.GetPageData() + offset;
+
+                log_manager_.AppendNewPageLog(xid, oid_, NULL_PAGE_ID, first_page_id_);
+                auto lsn = log_manager_.AppendInsertLog(xid, oid_, first_page_id_, slot_id, offset, record->GetSize(), new_record);
+                // printf("insert record %llu \n", lsn);
+                FirstPage.SetPageLSN(lsn);
+            }
+
         } else {
             while (current_page_id != NULL_PAGE_ID) {
                 auto current_page = buffer_pool_.GetPage(db_oid_, oid_, current_page_id);
@@ -53,6 +56,15 @@ namespace huadb {
 
                 if (Page.GetFreeSpaceSize() >= record->GetSize()) {
                     slot_id = Page.InsertRecord(record, xid, cid);
+
+                    if (write_log) {
+                        db_size_t offset = Page.GetUpper();
+                        char *new_record = Page.GetPageData() + offset;
+                        auto lsn = log_manager_.AppendInsertLog(xid, oid_, current_page_id, slot_id, offset, record->GetSize(), new_record);
+                        // printf("insert record %llu \n", lsn);
+                        Page.SetPageLSN(lsn);
+                    }
+
                     break;
                 }
                 // 无可用表
@@ -62,6 +74,16 @@ namespace huadb {
                     NewPage.Init();
                     Page.SetNextPageId(current_page_id + 1);
                     slot_id = NewPage.InsertRecord(record, xid, cid);
+
+                    if (write_log) {
+                        db_size_t offset = NewPage.GetUpper();
+                        char *new_record = NewPage.GetPageData() + offset;
+                        log_manager_.AppendNewPageLog(xid, oid_, current_page_id, current_page_id + 1);
+                        auto lsn = log_manager_.AppendInsertLog(xid, oid_, current_page_id + 1, slot_id, offset, record->GetSize(), new_record);
+                        // printf("insert record %llu \n", lsn);
+                        NewPage.SetPageLSN(lsn);
+                    }
+
                     break;
                 }
                 current_page_id = Page.GetNextPageId();
@@ -74,12 +96,14 @@ namespace huadb {
         // 增加写 DeleteLog 过程
         // 设置页面的 page lsn
         // LAB 2 BEGIN
-
-        // 使用 TablePage 操作页面
-        // LAB 1 BEGIN
         auto page = buffer_pool_.GetPage(db_oid_, oid_, rid.page_id_);
         TablePage Page(page);
         Page.DeleteRecord(rid.slot_id_, xid);
+
+        if (write_log) {
+            auto lsn = log_manager_.AppendDeleteLog(xid, oid_, rid.page_id_, rid.slot_id_);
+            Page.SetPageLSN(lsn);
+        }
     }
 
     Rid Table::UpdateRecord(const Rid &rid, xid_t xid, cid_t cid, std::shared_ptr<Record> record, bool write_log) {

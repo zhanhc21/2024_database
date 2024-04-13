@@ -42,7 +42,7 @@ namespace huadb {
         *lower_ += sizeof(Slot);
 
         Slot new_slot {
-            static_cast<db_size_t>(DB_PAGE_SIZE - *upper_),
+            *upper_,
             record->GetSize()
         };
         slots_[slots_id] = new_slot;
@@ -61,7 +61,7 @@ namespace huadb {
         // 将 page 标记为 dirty
         // LAB 1 BEGIN
         auto offset = slots_[slot_id].offset_;
-        auto *record = page_data_ + DB_PAGE_SIZE - offset;
+        auto *record = page_data_ + offset;
         record[0] = 1;
         page_->SetDirty();
     }
@@ -75,17 +75,21 @@ namespace huadb {
 
         auto record = std::make_shared<Record>();
         record->SetRid(rid);
-        record->DeserializeFrom(page_data_ + DB_PAGE_SIZE - offset, column_list);
+        record->DeserializeFrom(page_data_ + offset, column_list);
         return record;
     }
 
-    void TablePage::UndoDeleteRecord(slotid_t slot_d) {
+    void TablePage::UndoDeleteRecord(slotid_t slot_id) {
         // 修改 undo delete 的逻辑
         // LAB 3 BEGIN
 
         // 清除记录的删除标记
         // 将页面设为 dirty
         // LAB 2 BEGIN
+        auto offset = slots_[slot_id].offset_;
+        auto *record = page_data_ + offset;
+        record[0] = 0;
+        page_->SetDirty();
     }
 
     void TablePage::RedoInsertRecord(slotid_t slot_id, char *raw_record, db_size_t page_offset, db_size_t record_size) {
@@ -93,6 +97,19 @@ namespace huadb {
         // 注意维护 lower 和 upper 指针，以及 slots 数组
         // 将页面设为 dirty
         // LAB 2 BEGIN
+        *upper_ -= record_size;
+        *lower_ += sizeof(Slot);
+
+        Slot new_slot {
+                page_offset,
+                record_size
+        };
+        slots_[slot_id] = new_slot;
+
+        char *record = page_data_ + page_offset;
+        memcpy(record, raw_record, record_size);
+
+        page_->SetDirty();
     }
 
     db_size_t TablePage::GetRecordCount() const { return (*lower_ - PAGE_HEADER_SIZE) / sizeof(Slot); }
@@ -104,6 +121,8 @@ namespace huadb {
     db_size_t TablePage::GetLower() const { return *lower_; }
 
     db_size_t TablePage::GetUpper() const { return *upper_; }
+
+    char* TablePage::GetPageData() const { return page_data_; }
 
     db_size_t TablePage::GetFreeSpaceSize() const {
         if (*upper_ < *lower_ + sizeof(Slot)) {
@@ -149,5 +168,4 @@ namespace huadb {
         oss << "]\n";
         return oss.str();
     }
-
 }  // namespace huadb
