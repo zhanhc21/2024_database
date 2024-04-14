@@ -183,7 +183,6 @@ namespace huadb {
         while (lsn != NULL_LSN) {
             // log buffer
             if (lsn > flushed_lsn_) {
-                std::unique_lock lock(log_buffer_mutex_);
                 for (const auto &record: log_buffer_) {
                     if (record->GetLSN() == lsn) {
                         lsn = record->GetPrevLSN();
@@ -289,6 +288,7 @@ namespace huadb {
                 auto end_checkpoint = std::dynamic_pointer_cast<EndCheckpointLog>(record);
                 att_ = end_checkpoint->GetATT();
                 dpt_ = end_checkpoint->GetDPT();
+                break;
             }
 
             lsn += record->GetSize();
@@ -307,7 +307,13 @@ namespace huadb {
             }
             // 事务结束记录
             if (record->GetType() == LogType::COMMIT) {
-                att_.erase(xid);
+                if (att_.find(xid) != att_.end()) {
+                    att_.erase(xid);
+                }
+            }
+
+            if (xid > transaction_manager_.GetNextXid()) {
+                transaction_manager_.SetNextXid(xid);
             }
 
             oid_t oid = GetRecordInfo(record).first;
@@ -317,15 +323,6 @@ namespace huadb {
                 // 更新脏页表
                 if (dpt_.find({oid, page_id}) == dpt_.end()) {
                     dpt_[{oid, page_id}] = lsn;
-                }
-
-                auto db_oid = catalog_->GetDatabaseOid(oid);
-                auto current_page = buffer_pool_->GetPage(db_oid, oid, page_id);
-                TablePage table_page(current_page);
-
-                // PageId刷盘时, 从脏页表删除PageId
-                if (table_page.GetPageLSN() <= flushed_lsn_) {
-                    dpt_.erase({oid, page_id});
                 }
             }
 
@@ -363,24 +360,15 @@ namespace huadb {
                     if (lsn >= recLSN) {
                         if (record->GetType() == LogType::NEW_PAGE) {
                             record->Redo(*buffer_pool_, *catalog_, *this);
-                            // 更新 脏页表/活跃事务表
-                            xid_t xid = record->GetXid();
-                            att_[xid] = lsn;
-                            dpt_[{oid, page_id}] = lsn;
                         } else {
-                            auto db_oid = catalog_->GetDatabaseOid(oid);
+                            oid_t db_oid = catalog_->GetDatabaseOid(oid);
                             auto current_page = buffer_pool_->GetPage(db_oid, oid, page_id);
                             TablePage table_page(current_page);
-                            auto pageLSN = table_page.GetPageLSN();
+                            lsn_t pageLSN = table_page.GetPageLSN();
 
                             // 页面未在检查点后刷新
                             if (lsn > pageLSN) {
-                                // 重做
                                 record->Redo(*buffer_pool_, *catalog_, *this);
-                                // 更新 脏页表/活跃事务表
-                                xid_t xid = record->GetXid();
-                                att_[xid] = lsn;
-                                dpt_[{oid, page_id}] = lsn;
                             }
                         }
                     }

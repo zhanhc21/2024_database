@@ -1,3 +1,4 @@
+#include <iostream>
 #include "log/log_records/insert_log.h"
 #include "table/table_page.h"
 
@@ -82,7 +83,6 @@ namespace huadb {
     }
 
     void InsertLog::Redo(BufferPool &buffer_pool, Catalog &catalog, LogManager &log_manager) {
-        //printf("redo insert record %llu \n", lsn_);
         // 如果 oid_ 不存在，表示该表已经被删除，无需 redo
         if (!catalog.TableExists(oid_)) {
             return;

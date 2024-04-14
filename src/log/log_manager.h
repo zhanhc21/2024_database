@@ -70,8 +70,7 @@ namespace huadb {
         // 根据record类型返回 oid 与 page id
         static std::pair<oid_t, pageid_t> GetRecordInfo(std::shared_ptr<LogRecord>& record);
 
-        // min(RecLSN)
-        lsn_t min_rec_lsn_;
+        lsn_t min_rec_lsn_ = 0;
 
     private:
         // 将 lsn 之前的日志刷到磁盘
