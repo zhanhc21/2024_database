@@ -286,10 +286,9 @@ namespace huadb {
 
             // 检查点结束记录
             if (record->GetType() == LogType::END_CHECKPOINT) {
-                auto end_checkpoint = std::dynamic_pointer_cast<EndCheckpointLog>(record);;
+                auto end_checkpoint = std::dynamic_pointer_cast<EndCheckpointLog>(record);
                 att_ = end_checkpoint->GetATT();
                 dpt_ = end_checkpoint->GetDPT();
-                break;
             }
 
             lsn += record->GetSize();
@@ -304,31 +303,20 @@ namespace huadb {
 
             // 更新活跃事务表
             if (record->GetType() == LogType::INSERT || record->GetType() == LogType::DELETE || record->GetType() == LogType::NEW_PAGE) {
-                if (att_.find(xid) == att_.end()) {
-                    att_.emplace(xid, lsn); // 插入
-                } else {
-                    att_[xid] = lsn; // 更新
-                }
+                att_[xid] = lsn;
             }
             // 事务结束记录
             if (record->GetType() == LogType::COMMIT) {
                 att_.erase(xid);
             }
 
-            oid_t oid;
-            pageid_t page_id;
-            std::make_pair(oid, page_id) = GetRecordInfo(record);
+            oid_t oid = GetRecordInfo(record).first;
+            pageid_t page_id = GetRecordInfo(record).second;
 
             if (record->GetType() == LogType::INSERT || record->GetType() == LogType::DELETE || record->GetType() == LogType::NEW_PAGE) {
                 // 更新脏页表
                 if (dpt_.find({oid, page_id}) == dpt_.end()) {
-                    dpt_.emplace(TablePageid{oid, page_id}, lsn);
-                } else {
-                    lsn_t recLSN = dpt_[{oid, page_id}];
-                    // 维护min(recLSN) 即重做开始位置
-                    if (recLSN < min_rec_lsn_) {
-                        min_rec_lsn_ = recLSN;
-                    }
+                    dpt_[{oid, page_id}] = lsn;
                 }
 
                 auto db_oid = catalog_->GetDatabaseOid(oid);
@@ -351,38 +339,49 @@ namespace huadb {
         // 正序读取日志，调用日志记录的 Redo 函数
         // LAB 2 BEGIN
         lsn_t lsn = min_rec_lsn_;
+        for (auto iter : dpt_) {
+            lsn_t recLSN = iter.second;
+            if (recLSN < lsn) {
+                lsn = recLSN;
+            }
+        }
+
         char *record_data = static_cast<char*>(malloc(MAX_LOG_SIZE * sizeof(char)));
 
         while (lsn < next_lsn_) {
             disk_.ReadLog(lsn, MAX_LOG_SIZE, record_data);
             auto record = LogRecord::DeserializeFrom(lsn, record_data);
 
-            oid_t oid;
-            pageid_t page_id;
-            std::make_pair(oid, page_id) = GetRecordInfo(record);
+            oid_t oid = GetRecordInfo(record).first;
+            pageid_t page_id = GetRecordInfo(record).second;
 
             if (record->GetType() == LogType::INSERT || record->GetType() == LogType::DELETE || record->GetType() == LogType::NEW_PAGE) {
                 // 在脏页表
                 if (dpt_.find({oid, page_id}) != dpt_.end()) {
                     lsn_t recLSN = dpt_[{oid, page_id}];
+                    // 数据修改未在磁盘中生效
                     if (lsn >= recLSN) {
-                        // 从磁盘读到缓冲区
-                        std::unique_lock lock(log_buffer_mutex_);
-                        auto mov_record = record;
-                        log_buffer_.push_back(std::move(mov_record));
-
-                        auto db_oid = catalog_->GetDatabaseOid(oid);
-                        auto current_page = buffer_pool_->GetPage(db_oid, oid, page_id);
-                        TablePage table_page(current_page);
-                        auto pageLSN = table_page.GetPageLSN();
-
-                        // 重做
-                        if (pageLSN < lsn) {
+                        if (record->GetType() == LogType::NEW_PAGE) {
                             record->Redo(*buffer_pool_, *catalog_, *this);
                             // 更新 脏页表/活跃事务表
                             xid_t xid = record->GetXid();
                             att_[xid] = lsn;
                             dpt_[{oid, page_id}] = lsn;
+                        } else {
+                            auto db_oid = catalog_->GetDatabaseOid(oid);
+                            auto current_page = buffer_pool_->GetPage(db_oid, oid, page_id);
+                            TablePage table_page(current_page);
+                            auto pageLSN = table_page.GetPageLSN();
+
+                            // 页面未在检查点后刷新
+                            if (lsn > pageLSN) {
+                                // 重做
+                                record->Redo(*buffer_pool_, *catalog_, *this);
+                                // 更新 脏页表/活跃事务表
+                                xid_t xid = record->GetXid();
+                                att_[xid] = lsn;
+                                dpt_[{oid, page_id}] = lsn;
+                            }
                         }
                     }
                 }
@@ -396,39 +395,8 @@ namespace huadb {
     void LogManager::Undo() {
         // 根据活跃事务表，将所有活跃事务回滚
         // LAB 2 BEGIN
-//        lsn_t lsn = flushed_lsn_;
-//        while (true) {
-//            char *record_data = static_cast<char*>(malloc(MAX_LOG_SIZE * sizeof(char)));
-//            disk_.ReadLog(lsn, MAX_LOG_SIZE, record_data);
-//            auto record = LogRecord::DeserializeFrom(lsn, record_data);
-//            auto xid = record->GetXid();
-//
-//            lsn_t lastLSN = att_[xid];
-//            disk_.ReadLog(lastLSN, MAX_LOG_SIZE, record_data);
-//            auto target_record = LogRecord::DeserializeFrom(lastLSN, record_data);
-//            xid_t target_xid = target_record->GetXid();
-//
-//            // 回滚
-//            Rollback(target_xid);
-//            // 写入中止事务的记录
-//            AppendRollbackLog(target_xid);
-//
-//            oid_t oid = GetRecordInfo(target_record, lastLSN, record_data).first;
-//            pageid_t page_id = GetRecordInfo(target_record, lastLSN, record_data).second;
-//            dpt_.emplace(TablePageid{oid, page_id}, lastLSN);
-//
-//            lsn_t prevLSN = target_record->GetPrevLSN();
-//            lsn = prevLSN;
-//
-//            delete record_data;
-//
-//            if (prevLSN == 0) {
-//                break;
-//            }
-//        }
         for (auto iter : att_) {
             Rollback(iter.first);
-            AppendRollbackLog(iter.first);
         }
     }
 
@@ -436,25 +404,26 @@ namespace huadb {
         oid_t oid = 0;
         pageid_t page_id = 0;
 
-        switch (record->GetType()) {
-            case (LogType::INSERT): {
-                auto insert_record = std::dynamic_pointer_cast<InsertLog>(record);
-                page_id = insert_record->GetPageId();
-                oid = insert_record->GetOid();
-            }
-            case LogType::DELETE: {
-                auto delete_record = std::dynamic_pointer_cast<DeleteLog>(record);
-                page_id = delete_record->GetPageId();
-                oid = delete_record->GetOid();
-            }
-            case LogType::NEW_PAGE: {
-                auto new_page_record = std::dynamic_pointer_cast<NewPageLog>(record);
-                page_id = new_page_record->GetPageId();
-                oid = new_page_record->GetOid();
-            }
-            default:
-                break;
+        if (record->GetType() == LogType::INSERT) {
+            auto insert_record = std::dynamic_pointer_cast<InsertLog>(record);
+            assert(insert_record != nullptr);
+            page_id = insert_record->GetPageId();
+            oid = insert_record->GetOid();
         }
+        else if (record->GetType() == LogType::DELETE) {
+            auto delete_record = std::dynamic_pointer_cast<DeleteLog>(record);
+            assert(delete_record != nullptr);
+            page_id = delete_record->GetPageId();
+            oid = delete_record->GetOid();
+        }
+        else if (record->GetType() == LogType::NEW_PAGE) {
+            auto new_page_record = std::dynamic_pointer_cast<NewPageLog>(record);
+            assert(new_page_record != nullptr);
+            page_id = new_page_record->GetPageId();
+            oid = new_page_record->GetOid();
+        }
+        else {}
+
         return std::make_pair(oid, page_id);
     }
 

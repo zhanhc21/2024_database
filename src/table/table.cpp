@@ -45,7 +45,6 @@ namespace huadb {
 
                 log_manager_.AppendNewPageLog(xid, oid_, NULL_PAGE_ID, first_page_id_);
                 auto lsn = log_manager_.AppendInsertLog(xid, oid_, first_page_id_, slot_id, offset, record->GetSize(), new_record);
-                // printf("insert record %llu \n", lsn);
                 FirstPage.SetPageLSN(lsn);
             }
 
@@ -61,7 +60,6 @@ namespace huadb {
                         db_size_t offset = Page.GetUpper();
                         char *new_record = Page.GetPageData() + offset;
                         auto lsn = log_manager_.AppendInsertLog(xid, oid_, current_page_id, slot_id, offset, record->GetSize(), new_record);
-                        // printf("insert record %llu \n", lsn);
                         Page.SetPageLSN(lsn);
                     }
 
@@ -80,7 +78,6 @@ namespace huadb {
                         char *new_record = NewPage.GetPageData() + offset;
                         log_manager_.AppendNewPageLog(xid, oid_, current_page_id, current_page_id + 1);
                         auto lsn = log_manager_.AppendInsertLog(xid, oid_, current_page_id + 1, slot_id, offset, record->GetSize(), new_record);
-                        // printf("insert record %llu \n", lsn);
                         NewPage.SetPageLSN(lsn);
                     }
 
