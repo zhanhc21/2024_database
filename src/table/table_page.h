@@ -52,6 +52,9 @@ namespace huadb {
         // 获取页面 upper 指针
         db_size_t GetUpper() const;
 
+        // 获取 page_data
+        char* GetPageData() const;
+
         // 获取页面剩余空间大小
         db_size_t GetFreeSpaceSize() const;
 
