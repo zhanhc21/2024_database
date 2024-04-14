@@ -66,7 +66,6 @@ namespace huadb {
 
         std::string ToString() const;
 
-        char * GetPageData() const;
 
     private:
         std::shared_ptr<Page> page_;
