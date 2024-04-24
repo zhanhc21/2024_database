@@ -66,6 +66,11 @@ namespace huadb {
         page_->SetDirty();
     }
 
+void TablePage::UpdateRecordInPlace(const Record &record, slotid_t slot_id) {
+  record.SerializeTo(page_data_ + slots_[slot_id].offset_);
+  page_->SetDirty();
+}
+
     std::shared_ptr<Record> TablePage::GetRecord(Rid rid, const ColumnList &column_list) {
         // 根据 slot_id 获取 record
         // 新建 record 并设置 rid
