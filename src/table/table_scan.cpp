@@ -1,5 +1,5 @@
 #include "table/table_scan.h"
-
+#include "common/types.h"
 #include "table/table_page.h"
 
 namespace huadb {
@@ -16,7 +16,6 @@ namespace huadb {
         // 读取时更新 rid_ 变量，避免重复读取
         // 扫描结束时，返回空指针
         // 注意处理扫描空表的情况（rid_.page_id_ 为 NULL_PAGE_ID）
-        // LAB 1 BEGIN
         if (rid_.page_id_ == NULL_PAGE_ID) {
             return nullptr;
         }
@@ -25,26 +24,34 @@ namespace huadb {
 
         while (true) {
             auto current_page = buffer_pool_.GetPage(table_->GetDbOid(), table_->GetOid(), rid_.page_id_);
-            TablePage Page(current_page);
+            TablePage table_page(current_page);
 
-            if (rid_.slot_id_ < Page.GetRecordCount()) {
-                record = Page.GetRecord(rid_, table_ -> GetColumnList());
+            if (rid_.slot_id_ < table_page.GetRecordCount()) {
+                record = table_page.GetRecord(rid_, table_ -> GetColumnList());
                 rid_.slot_id_ += 1;
-                if (record->IsDeleted()) {
+
+                xid_t record_xid = record->GetXmin();
+                cid_t record_cid = record->GetCid();
+                // 加入可见性判断
+                if (record->IsDeleted() || (record_xid == xid && record_cid == cid)) {
                     continue;
                 }
                 break;
             }
             // 切换页面
-            else if (Page.GetNextPageId() != NULL_PAGE_ID) {
-                rid_.page_id_ = Page.GetNextPageId();
+            else if (table_page.GetNextPageId() != NULL_PAGE_ID) {
+                rid_.page_id_ = table_page.GetNextPageId();
                 rid_.slot_id_ = 0;
                 current_page = buffer_pool_.GetPage(table_->GetDbOid(), table_->GetOid(), rid_.page_id_);
-                new (&Page) TablePage(current_page);
+                new (&table_page) TablePage(current_page);
 
-                record = Page.GetRecord(rid_, table_->GetColumnList());
+                record = table_page.GetRecord(rid_, table_->GetColumnList());
                 rid_.slot_id_ += 1;
-                if (record->IsDeleted()) {
+
+                xid_t record_xid = record->GetXmin();
+                cid_t record_cid = record->GetCid();
+                // 加入可见性判断
+                if (record->IsDeleted() || (record_xid == xid && record_cid == cid)) {
                     continue;
                 }
                 break;
@@ -57,5 +64,4 @@ namespace huadb {
         }
         return record;
     }
-
 }  // namespace huadb

@@ -1,11 +1,13 @@
 #include "table/table_page.h"
+#include <wchar.h>
+#include <cwchar>
 #include <string>
 #include <sstream>
 #include <iostream>
 
 namespace huadb {
 
-    TablePage::TablePage(std::shared_ptr<Page> page) : page_(page) {
+    TablePage::TablePage(const std::shared_ptr<Page> &page) : page_(page) {
         page_data_ = page->GetData();
         db_size_t offset = 0;
         page_lsn_ = reinterpret_cast<lsn_t *>(page_data_);
@@ -28,53 +30,54 @@ namespace huadb {
         page_->SetDirty();
     }
 
-    slotid_t TablePage::InsertRecord(std::shared_ptr<Record> record, xid_t xid, cid_t cid) {
+    slotid_t TablePage::InsertRecord(const std::shared_ptr<Record> &record, xid_t xid, cid_t cid) {
         // 在记录头添加事务信息（xid 和 cid）
         // LAB 3 BEGIN
+        record->SetXmin(xid);
+        record->SetCid(cid);
+
         // 设置 slots 数组
         // 将 record 写入 page data
         // 将 page 标记为 dirty
         // 返回插入的 slot id
-        // LAB 1 BEGIN
-
         auto slots_id = (*lower_ - PAGE_HEADER_SIZE) / sizeof(Slot);
         *upper_ -= record->GetSize();
         *lower_ += sizeof(Slot);
 
-        Slot new_slot {
-            *upper_,
-            record->GetSize()
+        Slot new_slot{
+                *upper_,
+                record->GetSize()
         };
         slots_[slots_id] = new_slot;
-        record -> SerializeTo(page_data_ + *upper_);
+        record->SerializeTo(page_data_ + *upper_);
 
         page_->SetDirty();
         return slots_id;
     }
 
     void TablePage::DeleteRecord(slotid_t slot_id, xid_t xid) {
-        // 更改实验 1 的实现，改为通过 xid 标记删除
-        // LAB 3 BEGIN
-
         // 将 slot_id 对应的 record 标记为删除
         // 可使用 Record::DeserializeHeaderFrom 函数读取记录头
         // 将 page 标记为 dirty
-        // LAB 1 BEGIN
         auto offset = slots_[slot_id].offset_;
         auto *record = page_data_ + offset;
         record[0] = 1;
+
+        // 更改实验 1 的实现，改为通过 xid 标记删除
+        // LAB 3 BEGIN
+        memcpy(record + 5, std::to_string(xid).data(), 4);
+
         page_->SetDirty();
     }
 
-void TablePage::UpdateRecordInPlace(const Record &record, slotid_t slot_id) {
-  record.SerializeTo(page_data_ + slots_[slot_id].offset_);
-  page_->SetDirty();
-}
+    void TablePage::UpdateRecordInPlace(const Record &record, slotid_t slot_id) {
+        record.SerializeTo(page_data_ + slots_[slot_id].offset_);
+        page_->SetDirty();
+    }
 
     std::shared_ptr<Record> TablePage::GetRecord(Rid rid, const ColumnList &column_list) {
         // 根据 slot_id 获取 record
         // 新建 record 并设置 rid
-        // LAB 1 BEGIN
         auto slot_id = rid.slot_id_;
         auto offset = slots_[slot_id].offset_;
 
@@ -85,15 +88,16 @@ void TablePage::UpdateRecordInPlace(const Record &record, slotid_t slot_id) {
     }
 
     void TablePage::UndoDeleteRecord(slotid_t slot_id) {
-        // 修改 undo delete 的逻辑
-        // LAB 3 BEGIN
-
         // 清除记录的删除标记
         // 将页面设为 dirty
-        // LAB 2 BEGIN
         auto offset = slots_[slot_id].offset_;
         auto *record = page_data_ + offset;
         record[0] = 0;
+
+        // 修改 undo delete 的逻辑
+        // LAB 3 BEGIN
+        memcpy(record + 5, "    ", 4);
+
         page_->SetDirty();
     }
 
@@ -101,11 +105,10 @@ void TablePage::UpdateRecordInPlace(const Record &record, slotid_t slot_id) {
         // 将 raw_record 写入 page data
         // 注意维护 lower 和 upper 指针，以及 slots 数组
         // 将页面设为 dirty
-        // LAB 2 BEGIN
         *upper_ -= record_size;
         *lower_ += sizeof(Slot);
 
-        Slot new_slot {
+        Slot new_slot{
                 page_offset,
                 record_size
         };
@@ -127,7 +130,7 @@ void TablePage::UpdateRecordInPlace(const Record &record, slotid_t slot_id) {
 
     db_size_t TablePage::GetUpper() const { return *upper_; }
 
-    char* TablePage::GetPageData() const { return page_data_; }
+    char *TablePage::GetPageData() const { return page_data_; }
 
     db_size_t TablePage::GetFreeSpaceSize() const {
         if (*upper_ < *lower_ + sizeof(Slot)) {

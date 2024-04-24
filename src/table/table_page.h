@@ -17,13 +17,13 @@ namespace huadb {
 
     class TablePage {
     public:
-        explicit TablePage(std::shared_ptr<Page> page);
+        explicit TablePage(const std::shared_ptr<Page>& page);
 
         // 页面初始化
         void Init();
 
         // 插入记录，返回插入的槽号
-        slotid_t InsertRecord(std::shared_ptr<Record> record, xid_t xid, cid_t cid);
+        slotid_t InsertRecord(const std::shared_ptr<Record>& record, xid_t xid, cid_t cid);
 
         // 删除记录
         void DeleteRecord(slotid_t slot_id, xid_t xid);

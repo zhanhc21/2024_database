@@ -15,13 +15,13 @@ namespace huadb {
 
         // 插入记录，返回插入记录的 rid
         // write_log: 是否写日志。系统表操作不写日志，用户表操作写日志，lab 2 相关参数
-        Rid InsertRecord(std::shared_ptr<Record> record, xid_t xid, cid_t cid, bool write_log);
+        Rid InsertRecord(const std::shared_ptr<Record>& record, xid_t xid, cid_t cid, bool write_log);
 
         // 删除记录
         void DeleteRecord(const Rid &rid, xid_t xid, bool write_log);
 
         // 更新记录
-        Rid UpdateRecord(const Rid &rid, xid_t xid, cid_t cid, std::shared_ptr<Record> record, bool write_log);
+        Rid UpdateRecord(const Rid &rid, xid_t xid, cid_t cid, const std::shared_ptr<Record>& record, bool write_log);
 
         // 用于系统表的原地更新，无需关注
         void UpdateRecordInPlace(const Record &record);
