@@ -11,19 +11,25 @@ namespace huadb {
         xid_t record_insert_xid = record->GetXmin();
         xid_t record_delete_xid = record->GetXmax();
         cid_t record_insert_cid = record->GetCid();
-        // 判断删除
-        if (record->IsDeleted() && active_xids.find(record_delete_xid) == active_xids.end() && record_delete_xid <= xid) {
-            visible = false;
-        } else {
-            // 万圣节问题
-            if (record_insert_xid == xid && record_insert_cid == cid) {
+
+        if (iso_level == IsolationLevel::REPEATABLE_READ) {
+            if (record->IsDeleted() && active_xids.find(record_delete_xid) == active_xids.end() && record_delete_xid <= xid) {
                 visible = false;
             }
-            if (iso_level == IsolationLevel::REPEATABLE_READ) {
-                if (active_xids.find(record_insert_xid) != active_xids.end() || record_insert_xid > xid) {
-                    visible = false;
-                }
+            if (active_xids.find(record_insert_xid) != active_xids.end() || record_insert_xid > xid) {
+                visible = false;
             }
+        } else if (iso_level == IsolationLevel::READ_COMMITTED) {
+            if (record->IsDeleted() && (active_xids.find(record_delete_xid) == active_xids.end() || xid == record_delete_xid)) {
+                visible = false;
+            }
+            if (active_xids.find(record_insert_xid) != active_xids.end() && record_insert_xid != xid) {
+                visible = false;
+            }
+        }
+        // 万圣节问题
+        if (record_insert_xid == xid && record_insert_cid == cid) {
+            visible = false;
         }
         return visible;
     }
