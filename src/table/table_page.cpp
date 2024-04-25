@@ -1,9 +1,12 @@
 #include "table/table_page.h"
 #include <wchar.h>
 #include <cwchar>
+#include <ostream>
 #include <string>
 #include <sstream>
 #include <iostream>
+#include "common/constants.h"
+#include "common/types.h"
 
 namespace huadb {
 
@@ -65,8 +68,8 @@ namespace huadb {
 
         // 更改实验 1 的实现，改为通过 xid 标记删除
         // LAB 3 BEGIN
-        memcpy(record + 5, std::to_string(xid).data(), 4);
-
+        auto* record_xmax = reinterpret_cast<xid_t*>(record + 5);
+        *record_xmax = xid;
         page_->SetDirty();
     }
 
@@ -96,8 +99,8 @@ namespace huadb {
 
         // 修改 undo delete 的逻辑
         // LAB 3 BEGIN
-        memcpy(record + 5, "    ", 4);
-
+        auto* record_xmax = reinterpret_cast<xid_t*>(record + 5);
+        *record_xmax = NULL_XID;
         page_->SetDirty();
     }
 

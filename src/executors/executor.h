@@ -5,18 +5,20 @@
 
 namespace huadb {
 
-class Executor {
- public:
-  explicit Executor(ExecutorContext &context, std::vector<std::shared_ptr<Executor>> children)
-      : context_(context), children_(std::move(children)) {}
-  virtual ~Executor() = default;
+    class Executor {
+    public:
+        explicit Executor(ExecutorContext &context, std::vector<std::shared_ptr<Executor>> children)
+                : context_(context), children_(std::move(children)) {}
 
-  virtual void Init() = 0;
-  virtual std::shared_ptr<Record> Next() = 0;
+        virtual ~Executor() = default;
 
- protected:
-  ExecutorContext &context_;
-  std::vector<std::shared_ptr<Executor>> children_;
-};
+        virtual void Init() = 0;
+
+        virtual std::shared_ptr<Record> Next() = 0;
+
+    protected:
+        ExecutorContext &context_;
+        std::vector<std::shared_ptr<Executor>> children_;
+    };
 
 }  // namespace huadb

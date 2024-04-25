@@ -1,8 +1,32 @@
+#include <iostream>
+#include "common/constants.h"
 #include "table/table_scan.h"
 #include "common/types.h"
 #include "table/table_page.h"
 
 namespace huadb {
+
+    bool IsVisible(IsolationLevel iso_level, xid_t xid, cid_t cid, const std::unordered_set<xid_t> &active_xids, const std::shared_ptr<Record>& record) {
+        bool visible = true;
+        xid_t record_insert_xid = record->GetXmin();
+        xid_t record_delete_xid = record->GetXmax();
+        cid_t record_insert_cid = record->GetCid();
+        // 判断删除
+        if (record->IsDeleted() && active_xids.find(record_delete_xid) == active_xids.end() && record_delete_xid <= xid) {
+            visible = false;
+        } else {
+            // 万圣节问题
+            if (record_insert_xid == xid && record_insert_cid == cid) {
+                visible = false;
+            }
+            if (iso_level == IsolationLevel::REPEATABLE_READ) {
+                if (active_xids.find(record_insert_xid) != active_xids.end() || record_insert_xid > xid) {
+                    visible = false;
+                }
+            }
+        }
+        return visible;
+    }
 
     TableScan::TableScan(BufferPool &buffer_pool, std::shared_ptr<Table> table, Rid rid)
             : buffer_pool_(buffer_pool), table_(std::move(table)), rid_(rid) {}
@@ -25,15 +49,12 @@ namespace huadb {
         while (true) {
             auto current_page = buffer_pool_.GetPage(table_->GetDbOid(), table_->GetOid(), rid_.page_id_);
             TablePage table_page(current_page);
-
             if (rid_.slot_id_ < table_page.GetRecordCount()) {
                 record = table_page.GetRecord(rid_, table_ -> GetColumnList());
                 rid_.slot_id_ += 1;
 
-                xid_t record_xid = record->GetXmin();
-                cid_t record_cid = record->GetCid();
                 // 加入可见性判断
-                if (record->IsDeleted() || (record_xid == xid && record_cid == cid)) {
+                if (!IsVisible(isolation_level, xid, cid, active_xids, record)) {
                     continue;
                 }
                 break;
@@ -48,10 +69,8 @@ namespace huadb {
                 record = table_page.GetRecord(rid_, table_->GetColumnList());
                 rid_.slot_id_ += 1;
 
-                xid_t record_xid = record->GetXmin();
-                cid_t record_cid = record->GetCid();
                 // 加入可见性判断
-                if (record->IsDeleted() || (record_xid == xid && record_cid == cid)) {
+                if (!IsVisible(isolation_level, xid, cid, active_xids, record)) {
                     continue;
                 }
                 break;
