@@ -1,4 +1,5 @@
 #include "executors/seqscan_executor.h"
+#include <stdexcept>
 #include "common/types.h"
 #include "transaction/transaction_manager.h"
 
@@ -23,8 +24,6 @@ namespace huadb {
         auto iso_level = context_.GetIsolationLevel();
         auto &trans_manager = context_.GetTransactionManager();
 
-        // auto &lock_manager = context_.GetLockManager();
-
         // 可重复读
         if (iso_level == IsolationLevel::REPEATABLE_READ) {
             active_xids = trans_manager.GetSnapshot(xid);
@@ -33,7 +32,23 @@ namespace huadb {
         else if (iso_level == IsolationLevel::READ_COMMITTED) {
             active_xids = trans_manager.GetActiveTransactions();
         }
-        return scan_->GetNextRecord(xid, iso_level, cid, active_xids);
+
+        // auto table = context_.GetCatalog().GetTable(plan_->GetTableOid());
+        auto record = scan_->GetNextRecord(xid, iso_level, cid, active_xids);
+
+//        auto oid = table->GetOid();
+//        auto rid = record->GetRid();
+//        auto &lock_manager = context_.GetLockManager();
+//        // 表锁 IS
+//        if (!lock_manager.LockTable(xid, LockType::IS, oid)) {
+//            throw std::runtime_error("Set table lock IS failed");
+//        }
+//        // 行锁 S
+//        if (!lock_manager.LockRow(xid, LockType::S, oid, rid)) {
+//            throw std::runtime_error("Set row lock S failed");
+//        }
+
+        return record;
     }
 
 }  // namespace huadb

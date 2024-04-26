@@ -13,16 +13,20 @@ namespace huadb {
         cid_t record_insert_cid = record->GetCid();
 
         if (iso_level == IsolationLevel::REPEATABLE_READ) {
+            // 删除
             if (record->IsDeleted() && active_xids.find(record_delete_xid) == active_xids.end() && record_delete_xid <= xid) {
                 visible = false;
             }
+            // 脏读 不可重复读
             if (active_xids.find(record_insert_xid) != active_xids.end() || record_insert_xid > xid) {
                 visible = false;
             }
         } else if (iso_level == IsolationLevel::READ_COMMITTED) {
+            // 删除
             if (record->IsDeleted() && (active_xids.find(record_delete_xid) == active_xids.end() || xid == record_delete_xid)) {
                 visible = false;
             }
+            // 脏读
             if (active_xids.find(record_insert_xid) != active_xids.end() && record_insert_xid != xid) {
                 visible = false;
             }

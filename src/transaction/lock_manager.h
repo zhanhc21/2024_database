@@ -1,5 +1,7 @@
 #pragma once
 
+#include <vector>
+#include "common/constants.h"
 #include "common/types.h"
 
 namespace huadb {
@@ -21,6 +23,13 @@ namespace huadb {
         NONE, WAIT_DIE, WOUND_WAIT, DETECTION
     };
 
+    typedef struct {
+        LockType lock_type_;
+        LockGranularity granularity_;
+        xid_t xid_;
+        Rid rid_;
+    } Lock;
+
     class LockManager {
     public:
         // 获取表级锁
@@ -34,14 +43,22 @@ namespace huadb {
 
         void SetDeadLockType(DeadlockType deadlock_type);
 
+        const std::vector<std::vector<bool>> compatible_matrix_ = {{true,  true,  true,  true,  false},
+                                                                   {true,  true,  false, false, false},
+                                                                   {true,  false, true,  false, false},
+                                                                   {true,  false, false, false, false},
+                                                                   {false, false, false, false, false}};
+
     private:
         // 判断锁的相容性
-        bool Compatible(LockType type_a, LockType type_b) const;
+        bool Compatible(LockType type_a, LockType type_b);
 
         // 实现锁的升级，如共享锁升级为互斥锁，输入两种锁的类型，返回升级后的锁类型
         LockType Upgrade(LockType self, LockType other) const;
 
         DeadlockType deadlock_type_ = DeadlockType::NONE;
+
+        std::unordered_map<oid_t, std::vector<Lock>> locks_;
     };
 
 }  // namespace huadb
