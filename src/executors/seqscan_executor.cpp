@@ -33,16 +33,15 @@ namespace huadb {
             active_xids = trans_manager.GetActiveTransactions();
         }
 
-        // auto table = context_.GetCatalog().GetTable(plan_->GetTableOid());
+        auto table = context_.GetCatalog().GetTable(plan_->GetTableOid());
         auto record = scan_->GetNextRecord(xid, iso_level, cid, active_xids);
+        auto oid = table->GetOid();
+        auto &lock_manager = context_.GetLockManager();
 
-//        auto oid = table->GetOid();
-//        auto rid = record->GetRid();
-//        auto &lock_manager = context_.GetLockManager();
-//        // 表锁 IS
-//        if (!lock_manager.LockTable(xid, LockType::IS, oid)) {
-//            throw std::runtime_error("Set table lock IS failed");
-//        }
+        // 表锁 IS
+        if (!lock_manager.LockTable(xid, LockType::IS, oid)) {
+            throw std::runtime_error("Set table lock IS failed");
+        }
 //        // 行锁 S
 //        if (!lock_manager.LockRow(xid, LockType::S, oid, rid)) {
 //            throw std::runtime_error("Set row lock S failed");

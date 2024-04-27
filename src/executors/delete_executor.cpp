@@ -24,14 +24,15 @@ namespace huadb {
             auto xid = context_.GetXid();
             auto oid = table_->GetOid();
             auto rid = record->GetRid();
-//            // 表锁 IX
-//            if (!lock_manager.LockTable(xid, LockType::IX, oid)) {
-//                throw std::runtime_error("Set table lock IX failed");
-//            }
-//            // 行锁 X
-//            if (!lock_manager.LockRow(xid, LockType::X, oid, rid)) {
-//                throw std::runtime_error("Set row lock X failed");
-//            }
+
+            // 表锁 IX
+            if (!lock_manager.LockTable(xid, LockType::IX, oid)) {
+                throw std::runtime_error("Set table lock IX failed");
+            }
+            // 行锁 X
+            if (!lock_manager.LockRow(xid, LockType::X, oid, rid)) {
+                throw std::runtime_error("Set row lock X failed");
+            }
 
             table_->DeleteRecord(rid, xid, true);
             count++;
