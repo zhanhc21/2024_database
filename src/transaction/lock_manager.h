@@ -49,12 +49,18 @@ namespace huadb {
                                                                    {true,  false, false, false, false},
                                                                    {false, false, false, false, false}};
 
+        const std::vector<std::vector<LockType>> upgrade_matrix_ = {{LockType::IS,  LockType::IX, LockType::S,  LockType::SIX, LockType::X},
+                                                                    {LockType::IX,  LockType::IX, LockType::SIX, LockType::SIX, LockType::X},
+                                                                    {LockType::S,   LockType::SIX, LockType::S,  LockType::SIX, LockType::X},
+                                                                    {LockType::SIX, LockType::SIX,LockType::SIX,LockType::SIX, LockType::X},
+                                                                    {LockType::X,   LockType::X,  LockType::X,  LockType::X,   LockType::X}};
+
     private:
         // 判断锁的相容性
         bool Compatible(LockType type_a, LockType type_b);
 
         // 实现锁的升级，如共享锁升级为互斥锁，输入两种锁的类型，返回升级后的锁类型
-        static LockType Upgrade(LockType self, LockType other) ;
+        LockType Upgrade(LockType self, LockType other);
 
         DeadlockType deadlock_type_ = DeadlockType::NONE;
 

@@ -1,3 +1,5 @@
+#include <iostream>
+#include "common/exceptions.h"
 #include "executors/update_executor.h"
 
 namespace huadb {
@@ -29,13 +31,17 @@ namespace huadb {
             auto oid = table_->GetOid();
             auto rid = table_->UpdateRecord(record->GetRid(), context_.GetXid(), context_.GetCid(), new_record, true);
 
+            std::cout << "going to update" << std::endl;
             // 表锁 IX
             if (!lock_manager.LockTable(xid, LockType::IX, oid)) {
-                throw std::runtime_error("Set table lock IX failed");
+                throw DbException("update set table lock IX failed");
             }
             // 行锁 X
             if (!lock_manager.LockRow(xid, LockType::X, oid, rid)) {
-                throw std::runtime_error("Set row lock X failed");
+                throw DbException("update set row lock X failed");
+            }
+            if (!lock_manager.LockRow(xid, LockType::X, oid, record->GetRid())) {
+                throw DbException("update set row lock X failed");
             }
 
             count++;

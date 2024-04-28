@@ -35,11 +35,11 @@ namespace huadb {
 
             // 表锁 IX
             if (!lock_manager.LockTable(xid, LockType::IX, oid)) {
-                throw std::runtime_error("Set table lock IX failed");
+                throw DbException("insert set table lock IX failed");
             }
             // 行锁 X
             if (!lock_manager.LockRow(xid, LockType::X, oid, rid)) {
-                throw std::runtime_error("Set row lock X failed");
+                throw DbException("insert set row lock X failed");
             }
 
             count++;

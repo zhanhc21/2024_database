@@ -5,15 +5,17 @@
 
 namespace huadb {
 
-class LockRowsExecutor : public Executor {
- public:
-  LockRowsExecutor(ExecutorContext &context, std::shared_ptr<const LockRowsOperator> plan,
-                   std::shared_ptr<Executor> child);
-  void Init() override;
-  std::shared_ptr<Record> Next() override;
+    class LockRowsExecutor : public Executor {
+    public:
+        LockRowsExecutor(ExecutorContext &context, std::shared_ptr<const LockRowsOperator> plan,
+                         std::shared_ptr<Executor> child);
 
- private:
-  std::shared_ptr<const LockRowsOperator> plan_;
-};
+        void Init() override;
+
+        std::shared_ptr<Record> Next() override;
+
+    private:
+        std::shared_ptr<const LockRowsOperator> plan_;
+    };
 
 }  // namespace huadb

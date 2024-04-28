@@ -3,6 +3,7 @@
 #include "table/table_scan.h"
 #include "common/types.h"
 #include "table/table_page.h"
+#include "transaction/transaction_manager.h"
 
 namespace huadb {
 
@@ -12,7 +13,7 @@ namespace huadb {
         xid_t record_delete_xid = record->GetXmax();
         cid_t record_insert_cid = record->GetCid();
 
-        if (iso_level == IsolationLevel::REPEATABLE_READ) {
+        if (iso_level == IsolationLevel::REPEATABLE_READ || iso_level == IsolationLevel::SERIALIZABLE) {
             // 删除
             if (record->IsDeleted() && active_xids.find(record_delete_xid) == active_xids.end() && record_delete_xid <= xid) {
                 visible = false;

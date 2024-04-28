@@ -1,5 +1,6 @@
 #include "executors/delete_executor.h"
 #include <exception>
+#include <iostream>
 #include "transaction/lock_manager.h"
 
 namespace huadb {
@@ -25,16 +26,17 @@ namespace huadb {
             auto oid = table_->GetOid();
             auto rid = record->GetRid();
 
+            table_->DeleteRecord(rid, xid, true);
+            std::cout << "delete lock" << std::endl;
             // 表锁 IX
             if (!lock_manager.LockTable(xid, LockType::IX, oid)) {
-                throw std::runtime_error("Set table lock IX failed");
+                throw DbException("delete set table lock IX failed");
             }
             // 行锁 X
             if (!lock_manager.LockRow(xid, LockType::X, oid, rid)) {
-                throw std::runtime_error("Set row lock X failed");
+                throw DbException("delete set row lock X failed");
             }
 
-            table_->DeleteRecord(rid, xid, true);
             count++;
         }
         finished_ = true;

@@ -24,8 +24,8 @@ namespace huadb {
         auto iso_level = context_.GetIsolationLevel();
         auto &trans_manager = context_.GetTransactionManager();
 
-        // 可重复读
-        if (iso_level == IsolationLevel::REPEATABLE_READ) {
+        // 可重复读 / 串行化
+        if (iso_level == IsolationLevel::REPEATABLE_READ || iso_level == IsolationLevel::SERIALIZABLE) {
             active_xids = trans_manager.GetSnapshot(xid);
         }
         // 读已提交
@@ -40,12 +40,8 @@ namespace huadb {
 
         // 表锁 IS
         if (!lock_manager.LockTable(xid, LockType::IS, oid)) {
-            throw std::runtime_error("Set table lock IS failed");
+            throw DbException("Set table lock IS failed");
         }
-//        // 行锁 S
-//        if (!lock_manager.LockRow(xid, LockType::S, oid, rid)) {
-//            throw std::runtime_error("Set row lock S failed");
-//        }
 
         return record;
     }

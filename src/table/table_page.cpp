@@ -55,6 +55,7 @@ namespace huadb {
         record->SerializeTo(page_data_ + *upper_);
 
         page_->SetDirty();
+        // std::cout << "insert record xid " <<  xid << std::endl;
         return slots_id;
     }
 

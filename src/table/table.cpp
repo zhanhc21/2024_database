@@ -1,4 +1,5 @@
 #include <iostream>
+#include "common/types.h"
 #include "table/table.h"
 #include "table/table_page.h"
 
@@ -18,7 +19,7 @@ namespace huadb {
         }
     }
 
-    Rid Table::InsertRecord(const std::shared_ptr<Record>& record, xid_t xid, cid_t cid, bool write_log) {
+    Rid Table::InsertRecord(const std::shared_ptr<Record> &record, xid_t xid, cid_t cid, bool write_log) {
         if (record->GetSize() > MAX_RECORD_SIZE) {
             throw DbException("Record size too large: " + std::to_string(record->GetSize()));
         }
@@ -104,7 +105,8 @@ namespace huadb {
         }
     }
 
-    Rid Table::UpdateRecord(const Rid &rid, xid_t xid, cid_t cid, const std::shared_ptr<Record>& record, bool write_log) {
+    Rid
+    Table::UpdateRecord(const Rid &rid, xid_t xid, cid_t cid, const std::shared_ptr<Record> &record, bool write_log) {
         DeleteRecord(rid, xid, write_log);
         return InsertRecord(record, xid, cid, write_log);
     }

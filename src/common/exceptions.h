@@ -5,13 +5,14 @@
 
 namespace huadb {
 
-class DbException : public std::exception {
- public:
-  explicit DbException(const std::string &message) { message_ = message; }
-  const char *what() const noexcept override { return message_.c_str(); }
+    class DbException : public std::exception {
+    public:
+        explicit DbException(const std::string &message) { message_ = message; }
 
- private:
-  std::string message_;
-};
+        const char *what() const noexcept override { return message_.c_str(); }
+
+    private:
+        std::string message_;
+    };
 
 }  // namespace huadb
