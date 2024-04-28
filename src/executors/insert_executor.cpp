@@ -1,5 +1,5 @@
 #include "executors/insert_executor.h"
-#include "transaction/lock_manager.h"
+#include "common/exceptions.h"
 
 namespace huadb {
 
@@ -28,16 +28,17 @@ namespace huadb {
             auto table_record = std::make_shared<Record>(std::move(values));
             // 通过 context_ 获取正确的锁，加锁失败时抛出异常
             // LAB 3 BEGIN
+
             auto &lock_manager = context_.GetLockManager();
             auto xid = context_.GetXid();
             auto oid = table_->GetOid();
-            auto rid = table_->InsertRecord(std::move(table_record), xid, context_.GetCid(), true);
 
-            // 表锁 IX
             if (!lock_manager.LockTable(xid, LockType::IX, oid)) {
                 throw DbException("insert set table lock IX failed");
             }
-            // 行锁 X
+
+            auto rid = table_->InsertRecord(std::move(table_record), context_.GetXid(), context_.GetCid(), true);
+
             if (!lock_manager.LockRow(xid, LockType::X, oid, rid)) {
                 throw DbException("insert set row lock X failed");
             }

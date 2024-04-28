@@ -1,6 +1,5 @@
-#include <iostream>
-#include "common/exceptions.h"
 #include "executors/update_executor.h"
+#include "common/exceptions.h"
 
 namespace huadb {
 
@@ -20,7 +19,7 @@ namespace huadb {
         uint32_t count = 0;
         while (auto record = children_[0]->Next()) {
             std::vector<Value> values;
-            for (const auto &expr: plan_->update_exprs_) {
+            for (const auto &expr : plan_->update_exprs_) {
                 values.push_back(expr->Evaluate(record));
             }
             auto new_record = std::make_shared<Record>(std::move(values));
@@ -29,18 +28,18 @@ namespace huadb {
             auto &lock_manager = context_.GetLockManager();
             auto xid = context_.GetXid();
             auto oid = table_->GetOid();
-            auto rid = table_->UpdateRecord(record->GetRid(), context_.GetXid(), context_.GetCid(), new_record, true);
 
-            std::cout << "going to update" << std::endl;
-            // 表锁 IX
             if (!lock_manager.LockTable(xid, LockType::IX, oid)) {
                 throw DbException("update set table lock IX failed");
             }
-            // 行锁 X
+
+            auto rid = table_->UpdateRecord(record->GetRid(), context_.GetXid(), context_.GetCid(), new_record, true);
+
             if (!lock_manager.LockRow(xid, LockType::X, oid, rid)) {
                 throw DbException("update set row lock X failed");
             }
-            if (!lock_manager.LockRow(xid, LockType::X, oid, record->GetRid())) {
+
+            if (!lock_manager.LockRow(xid, LockType::X, oid,record->GetRid())) {
                 throw DbException("update set row lock X failed");
             }
 

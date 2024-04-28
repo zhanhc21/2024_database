@@ -42,7 +42,6 @@ namespace huadb {
         if (!lock_manager.LockTable(xid, LockType::IS, oid)) {
             throw DbException("Set table lock IS failed");
         }
-
         return record;
     }
 

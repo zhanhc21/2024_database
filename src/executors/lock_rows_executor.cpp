@@ -1,4 +1,5 @@
 #include "executors/lock_rows_executor.h"
+#include "common/exceptions.h"
 
 namespace huadb {
 
@@ -18,17 +19,18 @@ namespace huadb {
         auto oid = plan_->GetOid();
         auto lock_type = plan_->GetLockType();
         auto xid = context_.GetXid();
-        auto &lock_manager = context_.GetLockManager();
         auto rid = record->GetRid();
+        auto &lock_manager = context_.GetLockManager();
 
-//        // 表锁
-//        if (!lock_manager.LockTable(xid, lock_type, oid)) {
-//            throw std::runtime_error("Set table lock IX failed");
-//        }
-//        // 行锁
-//        if (!lock_manager.LockRow(xid, LockType::X, oid, rid)) {
-//            throw std::runtime_error("Set row lock X failed");
-//        }
+        if (lock_type == SelectLockType::SHARE) {
+            if (!lock_manager.LockRow(xid, LockType::S, oid, rid)) {
+                throw DbException("set lock s failed");
+            }
+        } else if (lock_type == SelectLockType::UPDATE) {
+            if (!lock_manager.LockRow(xid, LockType::X, oid, rid)) {
+                throw DbException("set lock x failed");
+            }
+        }
 
         return record;
     }

@@ -1,7 +1,5 @@
 #include "executors/delete_executor.h"
-#include <exception>
-#include <iostream>
-#include "transaction/lock_manager.h"
+#include "common/exceptions.h"
 
 namespace huadb {
 
@@ -21,18 +19,18 @@ namespace huadb {
         while (auto record = children_[0]->Next()) {
             // 通过 context_ 获取正确的锁，加锁失败时抛出异常
             // LAB 3 BEGIN
+
             auto &lock_manager = context_.GetLockManager();
             auto xid = context_.GetXid();
             auto oid = table_->GetOid();
             auto rid = record->GetRid();
 
-            table_->DeleteRecord(rid, xid, true);
-            std::cout << "delete lock" << std::endl;
-            // 表锁 IX
             if (!lock_manager.LockTable(xid, LockType::IX, oid)) {
                 throw DbException("delete set table lock IX failed");
             }
-            // 行锁 X
+
+            table_->DeleteRecord(rid, context_.GetXid(), true);
+
             if (!lock_manager.LockRow(xid, LockType::X, oid, rid)) {
                 throw DbException("delete set row lock X failed");
             }
