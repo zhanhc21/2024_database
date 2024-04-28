@@ -576,7 +576,7 @@ void DatabaseEngine::Analyze(const AnalyzeStatement &stmt, ResultWriter &writer)
     if (!stmt.columns_.empty()) {
       for (const auto &column : stmt.columns_) {
         auto column_list = catalog_->GetTableColumnList(stmt.table_->table_);
-        auto col_idx = column_list.GetColumnIndex(column->col_name_[0]);
+        auto col_idx = column_list.GetColumnIndex(column->col_name_[1]);
         auto col_type = column_list.GetColumn(col_idx).type_;
         auto col_name = column_list.GetColumn(col_idx).name_;
         auto col_size = column_list.GetColumn(col_idx).GetMaxSize();
@@ -603,7 +603,7 @@ void DatabaseEngine::Analyze(const AnalyzeStatement &stmt, ResultWriter &writer)
     value_set.resize(columns.size());
     while (auto record = scan->GetNextRecord()) {
       for (size_t i = 0; i < columns.size(); i++) {
-        value_set[i].insert(record->GetValue(i));
+        value_set[i].insert(record->GetValue(columns[i].GetColumnIndex()));
       }
       record_count++;
     }
