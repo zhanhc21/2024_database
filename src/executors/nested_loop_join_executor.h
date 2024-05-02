@@ -5,15 +5,17 @@
 
 namespace huadb {
 
-class NestedLoopJoinExecutor : public Executor {
- public:
-  NestedLoopJoinExecutor(ExecutorContext &context, std::shared_ptr<const NestedLoopJoinOperator> plan,
-                         std::shared_ptr<Executor> left, std::shared_ptr<Executor> right);
-  void Init() override;
-  std::shared_ptr<Record> Next() override;
+    class NestedLoopJoinExecutor : public Executor {
+    public:
+        NestedLoopJoinExecutor(ExecutorContext &context, std::shared_ptr<const NestedLoopJoinOperator> plan,
+                               std::shared_ptr<Executor> left, std::shared_ptr<Executor> right);
 
- private:
-  std::shared_ptr<const NestedLoopJoinOperator> plan_;
-};
+        void Init() override;
+
+        std::shared_ptr<Record> Next() override;
+
+    private:
+        std::shared_ptr<const NestedLoopJoinOperator> plan_;
+    };
 
 }  // namespace huadb
