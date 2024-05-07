@@ -16,6 +16,8 @@ namespace huadb {
 
     private:
         std::shared_ptr<const NestedLoopJoinOperator> plan_;
+        std::shared_ptr<Record> r_record_;
+        std::shared_ptr<Record> s_record_;
     };
 
 }  // namespace huadb
