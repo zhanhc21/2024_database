@@ -1,0 +1,73 @@
+statement ok
+set enable_optimizer = false;
+
+statement ok
+create table nl_left_1(id int, info varchar(100));
+
+statement ok
+create table nl_middle_1(id int, score double);
+
+query
+insert into nl_left_1 values(2, 'b'), (3, 'c'), (1, 'a'), (2, 'bb'), (1, 'aa'), (2, 'bbb');
+----
+6
+
+query
+insert into nl_middle_1 values(4, 4.4), (3, 3.3), (2, 2.2), (3, 3.4), (2, 2.3), (3, 3.5);
+----
+6
+
+
+query rowsort
+explain (optimizer) select nl_left_1.id, nl_left_1.info, nl_middle_1.score from nl_left_1 join nl_middle_1 on nl_left_1.id = nl_middle_1.id;
+----
+===Optimizer===
+Projection: ["nl_left_1.id", "nl_left_1.info", "nl_middle_1.score"]
+  NestedLoopJoin: nl_left_1.id = nl_middle_1.id
+    SeqScan: nl_left_1
+    SeqScan: nl_middle_1
+
+query rowsort
+select nl_left_1.id, nl_left_1.info, nl_middle_1.score from nl_left_1 left join nl_middle_1 on nl_left_1.id = nl_middle_1.id;
+----
+1 a NULL
+1 aa NULL
+2 b 2.2
+2 bb 2.2
+2 bbb 2.2
+2 b 2.3
+2 bb 2.3
+2 bbb 2.3
+3 c 3.3
+3 c 3.4
+3 c 3.5
+
+query rowsort
+select nl_left_1.id, nl_left_1.info, nl_middle_1.score from nl_left_1 right join nl_middle_1 on nl_left_1.id = nl_middle_1.id;
+----
+2 b 2.2
+2 bb 2.2
+2 bbb 2.2
+2 b 2.3
+2 bb 2.3
+2 bbb 2.3
+3 c 3.3
+3 c 3.4
+3 c 3.5
+4 NULL 4.4
+
+query rowsort
+select nl_left_1.id, nl_left_1.info, nl_middle_1.score from nl_left_1 full join nl_middle_1 on nl_left_1.id = nl_middle_1.id;
+----
+1 a NULL
+1 aa NULL
+2 b 2.2
+2 bb 2.2
+2 bbb 2.2
+2 b 2.3
+2 bb 2.3
+2 bbb 2.3
+3 c 3.3
+3 c 3.4
+3 c 3.5
+4 NULL 4.4
