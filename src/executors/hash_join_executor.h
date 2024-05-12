@@ -7,16 +7,17 @@
 
 namespace huadb {
 
-class HashJoinExecutor : public Executor {
- public:
-  HashJoinExecutor(ExecutorContext &context, std::shared_ptr<const HashJoinOperator> plan,
-                   std::shared_ptr<Executor> left, std::shared_ptr<Executor> right);
+    class HashJoinExecutor : public Executor {
+    public:
+        HashJoinExecutor(ExecutorContext &context, std::shared_ptr<const HashJoinOperator> plan,
+                         std::shared_ptr<Executor> left, std::shared_ptr<Executor> right);
 
-  void Init() override;
-  std::shared_ptr<Record> Next() override;
+        void Init() override;
 
- private:
-  std::shared_ptr<const HashJoinOperator> plan_;
-};
+        std::shared_ptr<Record> Next() override;
+
+    private:
+        std::shared_ptr<const HashJoinOperator> plan_;
+    };
 
 }  // namespace huadb
