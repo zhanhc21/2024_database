@@ -25,6 +25,6 @@ namespace huadb {
 
         std::shared_ptr<OperatorExpression> join_condition_;
         JoinType join_type_;
+        std::shared_ptr<ColumnList> column_list_;
     };
-
 }  // namespace huadb
