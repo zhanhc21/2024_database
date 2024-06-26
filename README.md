@@ -1,4 +1,5 @@
 毛导师，数据库のkami sama，[@momona06](https://github.com/momona06)
+以及数据库的文档真是令人难以评价，比Tomasulo和Rcore难写多了
 
 # HuaDB
 
