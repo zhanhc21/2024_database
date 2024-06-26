@@ -1,3 +1,5 @@
+毛导师，数据库のkami sama，[@momona06](https://github.com/momona06)
+
 # HuaDB
 
 HuaDB 为清华大学数据库内核课程的实验框架，实验说明可参阅[课程文档](https://thu-db.github.io/huadb-doc/)，课程资料可在[课程主页](https://dbgroup.cs.tsinghua.edu.cn/ligl/courses_cn.html)查阅。
